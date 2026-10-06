@@ -25,6 +25,8 @@ MANIFEST
 
 # Environments
 .env
+.env.*
+.dashboard/
 .venv
 env/
 venv/

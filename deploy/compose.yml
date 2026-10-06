@@ -75,6 +75,7 @@ services:
             --db-root-password "$$DB_ROOT_PASSWORD" --admin-password "$$ADMIN_PASSWORD" \
             --install-app invite
         fi
+        bench --site "$$SITE_NAME" install-app invite
         bench --site "$$SITE_NAME" list-apps
   backend:
     <<: *app

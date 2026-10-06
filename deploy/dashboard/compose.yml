@@ -1,0 +1,17 @@
+name: invite-dashboard
+services:
+  dashboard:
+    build:
+      context: ../..
+      dockerfile: deploy/dashboard/Dockerfile
+    restart: unless-stopped
+    environment:
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?Set a dashboard password of at least 12 characters}
+      DOCKER_CONFIG: /data/docker
+    ports:
+      - '127.0.0.1:8090:8090'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - dashboard-data:/data
+volumes:
+  dashboard-data:

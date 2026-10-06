@@ -5,6 +5,7 @@ Dockerfile
 .agents
 .codex
 .aws
+.dashboard
 .env
 .env.*
 **/__pycache__

@@ -101,6 +101,62 @@ existing invitation domain routing can resolve the hostname.
 Frontend source lives in `frontend/src`. `/invite` provides shortcuts to create
 wedding invitations and review responses in Frappe Desk.
 
+### Docker setup dashboard
+
+The dashboard runs separately from Frappe so you can install or update the site
+while the app is stopped. It provides site setup, service status, live operation
+logs, an image update check, and an update button.
+
+From the repository on your Docker host:
+
+```bash
+# Create .env.dashboard and set a password of at least 12 characters:
+# DASHBOARD_PASSWORD=your-dashboard-password
+docker compose --env-file .env.dashboard -f deploy/dashboard/compose.yml up -d --build
+```
+
+Open `http://localhost:8090` and sign in with that password. Enter the site
+hostname, web port, Administrator password, database password, and image tag
+(`latest` by default), then select **Install site**. Once setup finishes, use
+**Open site** and sign in as `Administrator`. The selected image must already
+have been published by the GHCR workflow.
+
+The dashboard manages its own `invite-managed` Compose project and persistent
+volumes. It does not adopt sites started with the earlier manual Compose
+commands. Choose an unused web port if another site is already running. Setup
+settings are saved for retries; site identity and database credentials remain
+fixed after setup starts.
+
+Select **Check for updates** to pull the selected tag and compare image IDs.
+**Check & update** downloads the image, pauses the site and background jobs,
+backs up the database and public/private files, runs setup and migrations with
+the exact downloaded image digest, and restarts the app services. If a migration
+fails, the site stays paused; **Retry update** resumes with the same image and
+preserves the backup. Updates are initiated manually. Backups are stored in the
+site volume under `<site>/private/backups`; failed migrations do not trigger an
+automatic database rollback.
+
+The dashboard password protects access to the Docker host. Its port is bound to
+loopback by default. For a remote server, forward it over SSH:
+
+```bash
+ssh -L 8090:127.0.0.1:8090 -L 8080:127.0.0.1:8080 user@your-server
+```
+
+If the GHCR package is private, open **Registry access** in the dashboard and
+save your GitHub username and a token with `read:packages` permission. Docker
+stores that sign-in in the persistent dashboard volume; the token is passed
+through standard input and is excluded from the site configuration and logs.
+Public images need no registry sign-in.
+
+The dashboard requires Docker Engine and Compose. You can also run it directly
+on the host with Python 3.10+:
+
+```bash
+export DASHBOARD_PASSWORD='your-dashboard-password'
+python3 deploy/dashboard/server.py
+```
+
 ### Contributing
 
 This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
