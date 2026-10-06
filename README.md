@@ -49,8 +49,11 @@ Generated files are ignored by Git and must be built after installation.
 `.github/workflows/docker.yml` builds a Linux amd64 image on pushes to
 `version-16` or `main`, `v*` tags, pull requests, and manual runs from the
 Actions tab. It checks that Frappe and Invite import and that frontend assets
-were built. The image stays on the workflow runner; registry publishing and
-artifact uploads are not configured.
+were built before publishing to `ghcr.io/santhosh3279/myinvite2u` with the
+workflow's `GITHUB_TOKEN`; no additional registry secret is required. Pull
+requests only build and verify. Pushes and manual runs publish branch and
+`sha-<commit>` tags; default branch builds also publish `latest`. Version tags
+such as `v1.0.0` publish `1.0.0`.
 
 The multi-stage `Dockerfile` uses the official Frappe v16 build/runtime bases,
 initializes a Frappe bench, installs this checkout of Invite, and builds both
@@ -67,6 +70,12 @@ cp deploy/docker.env.example .env
 docker compose --env-file .env -f deploy/compose.yml up -d
 docker compose --env-file .env -f deploy/compose.yml logs -f setup
 ```
+
+To use the published image instead of building locally, run
+`docker pull ghcr.io/santhosh3279/myinvite2u:latest` and set
+`INVITE_IMAGE=ghcr.io/santhosh3279/myinvite2u:latest` in `.env` before starting
+Compose. If the GHCR package is private, log in with `docker login ghcr.io`
+using a token with `read:packages` permission.
 
 Compose starts MariaDB, Redis, the backend, Nginx, websocket, worker, and
 scheduler services. Its setup service waits for the database and Redis, creates
