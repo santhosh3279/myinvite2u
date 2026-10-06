@@ -115,7 +115,8 @@ From the repository on your Docker host:
 docker compose --env-file .env.dashboard -f deploy/dashboard/compose.yml up -d --build
 ```
 
-Open `http://localhost:8090` and sign in with that password. Enter the site
+Open `http://localhost:8090` locally or `http://<server-ip>:8090` remotely and
+sign in with that password. Enter the site
 hostname, web port, Administrator password, database password, and image tag
 (`latest` by default), then select **Install site**. Once setup finishes, use
 **Open site** and sign in as `Administrator`. The selected image must already
@@ -137,7 +138,8 @@ site volume under `<site>/private/backups`; failed migrations do not trigger an
 automatic database rollback.
 
 The dashboard password protects access to the Docker host. Its port is bound to
-loopback by default. For a remote server, forward it over SSH:
+`0.0.0.0` so it is reachable on all host interfaces. You can also forward access
+over SSH:
 
 ```bash
 ssh -L 8090:127.0.0.1:8090 -L 8080:127.0.0.1:8080 user@your-server
