@@ -53,3 +53,7 @@ jspm_packages/
 
 # Aider AI Chat
 .aider*
+
+# Generated frontend build outputs
+invite/public/frontend/
+invite/www/invite.html

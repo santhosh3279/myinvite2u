@@ -1,0 +1,89 @@
+from datetime import datetime
+from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+import frappe
+from frappe import _
+from frappe.utils import cint, get_time, getdate, validate_email_address
+from frappe.website.website_generator import WebsiteGenerator
+from frappe.website.utils import cleanup_page_name
+
+from invite.domains import domain_from_names, validate_invitation_domain
+
+
+INVITATION_TEMPLATES = {
+	"Light": "templates/wedding_invitation.html",
+	"Dark": "templates/wedding_invitation_dark.html",
+}
+
+
+def validate_public_url(value, label):
+	if not value:
+		return
+	parts = urlsplit(value)
+	if not ((parts.scheme == "https" and parts.netloc) or (value.startswith("/") and not value.startswith("//"))):
+		frappe.throw(_("{0} must be an HTTPS URL or a public file path.").format(label))
+	if value.startswith("/private/") or "\\" in value or any(ord(c) < 32 for c in value):
+		frappe.throw(_("{0} must use a public file.").format(label))
+
+
+class WeddingInvitation(WebsiteGenerator):
+	website = frappe._dict(condition_field="is_published", page_title_field="title", template="templates/wedding_invitation.html")
+
+	def onload(self):
+		super().onload()
+		self.get("__onload").suggested_invitation_domain = domain_from_names(self.bride_name, self.groom_name)
+
+	def validate(self):
+		self.invitation_template = self.invitation_template or "Light"
+		if self.invitation_template not in INVITATION_TEMPLATES:
+			frappe.throw(_("Please select a Light or Dark invitation template."))
+		self.bride_name = (self.bride_name or "").strip()
+		self.groom_name = (self.groom_name or "").strip()
+		bride = cleanup_page_name(self.bride_name).strip("-.")
+		groom = cleanup_page_name(self.groom_name).strip("-.")
+		if not bride or not groom:
+			frappe.throw(_("Please enter both bride and groom names."))
+		self.title = f"{self.bride_name} & {self.groom_name}"
+		self.route = f"{bride[:55]}&{groom[:55]}-{getdate(self.wedding_date).isoformat()}"
+		duplicate = frappe.db.get_value("Wedding Invitation", {"route": self.route, "name": ["!=", self.name or ""]}, "name")
+		if duplicate:
+			frappe.throw(_("An invitation for these names and date already exists."))
+		previous = self.get_doc_before_save()
+		previous_suggestion = domain_from_names(previous.bride_name, previous.groom_name) if previous else ""
+		if not self.invitation_domain or (previous_suggestion and self.invitation_domain == previous_suggestion):
+			self.invitation_domain = domain_from_names(self.bride_name, self.groom_name)
+		if self.enable_subdomain or self.invitation_domain:
+			self.invitation_domain = validate_invitation_domain(self.invitation_domain)
+			duplicate_domain = frappe.db.get_value("Wedding Invitation", {
+				"invitation_domain": self.invitation_domain, "name": ["!=", self.name or ""],
+			}, "name")
+			if duplicate_domain:
+				frappe.throw(_("This invitation domain is already assigned to another invitation."))
+		self.public_url = f"https://{self.invitation_domain}/" if self.enable_subdomain else "/" + self.route
+		try:
+			ZoneInfo(self.timezone)
+		except (ZoneInfoNotFoundError, ValueError, TypeError):
+			frappe.throw(_("Please enter a valid IANA timezone, for example Asia/Kolkata."))
+		if not 1 <= cint(self.max_guests) <= 50:
+			frappe.throw(_("Maximum guests must be between 1 and 50."))
+		if self.rsvp_deadline and getdate(self.rsvp_deadline) > getdate(self.wedding_date):
+			frappe.throw(_("RSVP deadline cannot be after the wedding date."))
+		if self.contact_email:
+			validate_email_address(self.contact_email, throw=True)
+		for key in ("hero_image", "couple_image", "music_file"):
+			validate_public_url(self.get(key), self.meta.get_label(key))
+		for row in self.events:
+			validate_public_url(row.maps_url, _("Directions URL"))
+		for row in [*self.gallery, *self.story]:
+			validate_public_url(row.image, _("Photo"))
+		super().validate()
+
+	def get_context(self, context):
+		context.template = INVITATION_TEMPLATES.get(self.invitation_template, INVITATION_TEMPLATES["Light"])
+		context.no_cache = 1
+		context.sitemap = False
+		wedding_time = self.wedding_time if self.wedding_time is not None and self.wedding_time != "" else "10:00:00"
+		context.wedding_iso = datetime.combine(getdate(self.wedding_date), get_time(wedding_time), tzinfo=ZoneInfo(self.timezone)).isoformat()
+		context.rsvp_open = bool(self.enable_rsvp and (not self.rsvp_deadline or datetime.now(ZoneInfo(self.timezone)).date() <= getdate(self.rsvp_deadline)))
+		context.csrf_token = frappe.sessions.get_csrf_token()

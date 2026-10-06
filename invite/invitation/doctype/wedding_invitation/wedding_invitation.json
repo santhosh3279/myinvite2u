@@ -1,0 +1,284 @@
+{
+  "doctype": "DocType",
+  "name": "Wedding Invitation",
+  "module": "Invitation",
+  "engine": "InnoDB",
+  "field_order": [
+    "couple_section",
+    "bride_name",
+    "groom_name",
+    "title",
+    "bride_parents",
+    "groom_parents",
+    "wedding_section",
+    "wedding_date",
+    "wedding_time",
+    "timezone",
+    "invitation_template",
+    "is_published",
+    "route",
+    "domain_section",
+    "enable_subdomain",
+    "invitation_domain",
+    "public_url",
+    "content_section",
+    "invitation_message",
+    "hero_image",
+    "couple_image",
+    "quote",
+    "story",
+    "events",
+    "gallery",
+    "guest_section",
+    "travel_notes",
+    "contact_name",
+    "contact_phone",
+    "contact_email",
+    "music_file",
+    "rsvp_section",
+    "enable_rsvp",
+    "rsvp_deadline",
+    "max_guests",
+    "rsvp_message"
+  ],
+  "fields": [
+    {
+      "fieldname": "couple_section",
+      "label": "The Couple",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "bride_name",
+      "label": "Bride Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "groom_name",
+      "label": "Groom Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "title",
+      "label": "Title",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "bride_parents",
+      "label": "Bride\u2019s Parents",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "groom_parents",
+      "label": "Groom\u2019s Parents",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "wedding_section",
+      "label": "Wedding & Publishing",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "wedding_date",
+      "label": "Wedding Date",
+      "fieldtype": "Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "wedding_time",
+      "label": "Wedding Time",
+      "fieldtype": "Time",
+      "default": "10:00:00"
+    },
+    {
+      "fieldname": "timezone",
+      "label": "Timezone",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "default": "Asia/Kolkata",
+      "description": "IANA timezone, for example Asia/Kolkata or Europe/London. Event times use this timezone."
+    },
+    {
+      "fieldname": "invitation_template",
+      "label": "Invitation Template",
+      "fieldtype": "Select",
+      "options": "Light\nDark",
+      "default": "Light",
+      "reqd": 1,
+      "description": "Choose the design used by this invitation\u2019s public website."
+    },
+    {
+      "fieldname": "is_published",
+      "label": "Publish Invitation",
+      "fieldtype": "Check",
+      "default": "0",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "route",
+      "label": "Website Address",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "unique": 1,
+      "description": "Generated as bride&groom-YYYY-MM-DD. Names or date changes update the address."
+    },
+    {
+      "fieldname": "domain_section",
+      "label": "Subdomain",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "enable_subdomain",
+      "label": "Enable Subdomain",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "invitation_domain",
+      "label": "Custom Domain",
+      "fieldtype": "Data",
+      "unique": 1,
+      "mandatory_depends_on": "eval:doc.enable_subdomain",
+      "description": "Autofilled from bride and groom names, e.g. anna-james.myinvite2u.in. You can edit this hostname. Enable Subdomain to use it. Do not include https://, a path or a port."
+    },
+    {
+      "fieldname": "public_url",
+      "label": "Public Invitation URL",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "content_section",
+      "label": "Invitation Content",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "invitation_message",
+      "label": "Invitation Message",
+      "fieldtype": "Small Text",
+      "default": "Together with our families, we invite you to celebrate our wedding."
+    },
+    {
+      "fieldname": "hero_image",
+      "label": "Cover Photo",
+      "fieldtype": "Attach Image"
+    },
+    {
+      "fieldname": "couple_image",
+      "label": "Couple Photo",
+      "fieldtype": "Attach Image"
+    },
+    {
+      "fieldname": "quote",
+      "label": "Favourite Quote",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "story",
+      "label": "Our Story",
+      "fieldtype": "Table",
+      "options": "Wedding Story"
+    },
+    {
+      "fieldname": "events",
+      "label": "Wedding Events",
+      "fieldtype": "Table",
+      "options": "Wedding Event",
+      "reqd": 1
+    },
+    {
+      "fieldname": "gallery",
+      "label": "Photo Gallery",
+      "fieldtype": "Table",
+      "options": "Wedding Photo"
+    },
+    {
+      "fieldname": "guest_section",
+      "label": "Guest Information",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "travel_notes",
+      "label": "Travel & Accommodation",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "contact_name",
+      "label": "Contact Name",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "contact_phone",
+      "label": "Contact Phone",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "contact_email",
+      "label": "Contact Email",
+      "fieldtype": "Data",
+      "options": "Email"
+    },
+    {
+      "fieldname": "music_file",
+      "label": "Background Music",
+      "fieldtype": "Attach",
+      "description": "Public MP3/audio attachment. Guests start music using the music button."
+    },
+    {
+      "fieldname": "rsvp_section",
+      "label": "RSVP Settings",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "enable_rsvp",
+      "label": "Enable RSVP",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "rsvp_deadline",
+      "label": "RSVP Deadline",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "max_guests",
+      "label": "Maximum Guests per RSVP",
+      "fieldtype": "Int",
+      "default": "5",
+      "reqd": 1
+    },
+    {
+      "fieldname": "rsvp_message",
+      "label": "RSVP Message",
+      "fieldtype": "Small Text",
+      "default": "We would love to celebrate with you. Please let us know if you can join us."
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "share": 1
+    }
+  ],
+  "has_web_view": 1,
+  "allow_guest_to_view": 1,
+  "is_published_field": "is_published",
+  "title_field": "title",
+  "search_fields": "bride_name,groom_name,wedding_date",
+  "sort_field": "wedding_date",
+  "sort_order": "DESC",
+  "autoname": "hash",
+  "track_changes": 1
+}

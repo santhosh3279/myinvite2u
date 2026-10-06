@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" {% block theme_attributes %}data-theme="{{ 'dark' if doc.invitation_template == 'Dark' else 'light' }}"{% endblock %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token | e }}">
+  <meta name="description" content="{{ (doc.invitation_message or doc.title) | e }}">
+  <meta property="og:title" content="{{ doc.title | e }} — Wedding Invitation">
+  <meta property="og:description" content="{{ (doc.invitation_message or '') | e }}">
+  {% if doc.hero_image %}<meta property="og:image" content="{{ frappe.utils.get_url(doc.hero_image) | e }}">{% endif %}
+  <meta name="color-scheme" content="{{ 'dark' if doc.invitation_template == 'Dark' else 'light' }}">
+  <meta name="theme-color" content="{% block theme_color %}{{ '#111820' if doc.invitation_template == 'Dark' else '#faf7f0' }}{% endblock %}">
+  <title>{{ doc.title | e }} — Wedding Invitation</title>
+  <link rel="stylesheet" href="/assets/invite/css/wedding.css?v=5">
+  {% block template_styles %}
+  {% if doc.invitation_template == 'Dark' %}<link rel="stylesheet" href="/assets/invite/css/wedding-dark.css?v=2">{% endif %}
+  {% endblock %}
+  <script src="/assets/invite/js/wedding.js?v=4" defer></script>
+</head>
+<body data-wedding-date="{{ wedding_iso | e }}" data-route="{{ doc.route | e }}">
+  <div class="envelope-overlay" id="envelope" hidden>
+    <p class="eyebrow">A little love, delivered to you</p>
+    <button class="envelope" id="open-invitation" aria-label="Open wedding invitation">
+      <span class="envelope-letter" aria-hidden="true"><span class="eyebrow">You’re invited</span><span class="letter-names">{{ doc.bride_name | e }} <i>&</i> {{ doc.groom_name | e }}</span><span class="letter-date">{{ frappe.utils.formatdate(doc.wedding_date, 'MMMM d, yyyy') | e }}</span><span class="letter-heart">♡</span></span>
+      <span class="envelope-flap"></span><span class="seal">{{ doc.bride_name[0] | e }} & {{ doc.groom_name[0] | e }}</span>
+    </button>
+    <h1>{{ doc.bride_name | e }} <i>&</i> {{ doc.groom_name | e }}</h1>
+    <p>{{ frappe.utils.formatdate(doc.wedding_date, 'MMMM d, yyyy') | e }}</p>
+    <span class="eyebrow open-hint">Tap the seal to open</span>
+  </div>
+  <div id="invitation-content">
+  <nav class="navigation" aria-label="Invitation navigation">
+    <a class="monogram" href="#home">{{ doc.bride_name[0] | e }}<i>&</i>{{ doc.groom_name[0] | e }}</a>
+    <div>{% if doc.story %}<a href="#story">Our story</a>{% endif %}<a href="#celebrations">The day</a>{% if doc.gallery %}<a href="#gallery">Gallery</a>{% endif %}{% if rsvp_open %}<a class="nav-rsvp" href="#rsvp">RSVP</a>{% endif %}</div>
+    <span class="reading-progress" aria-hidden="true"></span>
+  </nav>
+  <main>
+    <section class="hero" id="home">
+      <div class="hero-copy">
+        <p class="eyebrow">Together with our families</p>
+        <p class="hero-intro">We’re getting married</p>
+        <h1>{{ doc.bride_name | e }}<span class="ampersand">&</span>{{ doc.groom_name | e }}</h1>
+        <div class="fine-rule"></div>
+        <p class="wedding-date">{{ frappe.utils.formatdate(doc.wedding_date, 'MMMM d, yyyy') | e }}</p>
+        <p class="message">{{ (doc.invitation_message or '') | e }}</p>
+        {% if doc.bride_parents or doc.groom_parents %}<p class="families">{% if doc.bride_parents %}{{ doc.bride_parents | e }}{% endif %}{% if doc.bride_parents and doc.groom_parents %}<br> & <br>{% endif %}{% if doc.groom_parents %}{{ doc.groom_parents | e }}{% endif %}</p>{% endif %}
+        <a class="button" href="#celebrations">Discover the celebration <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="hero-visual {% if not doc.hero_image %}botanical-cover{% endif %}">
+      {% if doc.hero_image %}<img class="cover-photo" src="{{ doc.hero_image | e }}" alt="{{ doc.title | e }}" fetchpriority="high">{% else %}
+        <svg class="botanical" viewBox="0 0 400 550" fill="none" aria-hidden="true"><g stroke="currentColor" stroke-width="1.5"><path d="M198 520C140 430 250 330 199 230C170 175 210 125 207 50M199 410C135 350 87 323 65 245M205 325C276 296 317 231 325 160M191 229C128 200 105 153 98 91"/><path d="M183 464C122 466 89 430 81 397C133 392 171 417 183 464ZM194 390C210 348 251 334 281 344C271 383 233 405 194 390ZM133 336C86 340 53 306 51 274C98 272 126 294 133 336ZM198 281C207 240 243 223 277 230C266 273 235 290 198 281ZM277 267C273 223 294 187 327 179C340 220 320 252 277 267ZM165 216C126 228 93 210 82 181C120 165 153 175 165 216ZM199 167C213 128 248 115 277 128C267 159 232 178 199 167ZM211 100C177 81 173 47 191 20C224 39 233 76 211 100Z"/></g></svg>
+        <span class="visual-label">The beginning of forever</span>
+      {% endif %}<span class="photo-caption">A day for love. A lifetime together.</span>
+      </div>
+    </section>
+    <section class="countdown-section" aria-label="Wedding countdown">
+      <p class="eyebrow" id="countdown-label">Counting down to our forever</p>
+      <div class="countdown" id="countdown"><div><strong data-unit="days">—</strong><span>Days</span></div><b>:</b><div><strong data-unit="hours">—</strong><span>Hours</span></div><b>:</b><div><strong data-unit="minutes">—</strong><span>Minutes</span></div><b>:</b><div><strong data-unit="seconds">—</strong><span>Seconds</span></div></div>
+    </section>
+    {% if doc.story or doc.couple_image or doc.quote %}
+    <section class="section story-section" id="story">
+      <div class="section-heading"><p class="eyebrow">Every love has a story</p><h2>Ours led us here.</h2>{% if doc.quote %}<blockquote>“{{ doc.quote | e }}”</blockquote>{% endif %}</div>
+      {% if doc.couple_image %}<img class="couple-photo" src="{{ doc.couple_image | e }}" alt="{{ doc.title | e }} together" loading="lazy">{% endif %}
+      {% if doc.story %}
+      <div class="timeline">
+        <svg class="timeline-mapping" aria-hidden="true" focusable="false">
+          <defs><mask id="story-trace-mask" maskUnits="userSpaceOnUse"><path class="timeline-mask" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" /></mask></defs>
+          <path class="timeline-track" fill="none" />
+          <path class="timeline-trace" fill="none" mask="url(#story-trace-mask)" />
+        </svg>
+        {% for milestone in doc.story %}
+        <article class="milestone {% if loop.index is odd %}milestone-left{% else %}milestone-right{% endif %}">
+          <span class="timeline-dot" aria-hidden="true">{{ '%02d' | format(loop.index) }}</span>
+          <div class="milestone-card">
+            {% if milestone.milestone_date %}<p class="eyebrow">{{ frappe.utils.formatdate(milestone.milestone_date, 'MMMM yyyy') | e }}</p>{% endif %}
+            <h3>{{ milestone.title | e }}</h3>
+            <p class="preserve-lines">{{ milestone.description | e }}</p>
+            {% if milestone.image %}<img src="{{ milestone.image | e }}" alt="{{ milestone.title | e }}" loading="lazy">{% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>{% endif %}
+    <section class="section celebrations-section" id="celebrations">
+      <div class="section-heading"><p class="eyebrow">Save a place in your heart</p><h2>The celebrations</h2><p>We can’t wait to share these moments with you.</p></div>
+      <div class="event-grid">{% for event in doc.events %}<article class="event-card"><span class="event-number">{{ '%02d' | format(loop.index) }}</span><h3>{{ event.event_name | e }}</h3><p class="event-date">{{ frappe.utils.format_datetime(event.event_datetime, 'EEEE, MMMM d, yyyy') | e }}<br>{{ frappe.utils.format_datetime(event.event_datetime, 'h:mm a') | e }} · {{ doc.timezone | e }}</p><div class="fine-rule"></div><h4>{{ event.venue_name | e }}</h4><p class="preserve-lines">{{ (event.address or '') | e }}</p>{% if event.description %}<p class="preserve-lines">{{ event.description | e }}</p>{% endif %}{% if event.dress_code %}<p><strong>Dress code:</strong> {{ event.dress_code | e }}</p>{% endif %}{% if event.maps_url %}<a class="text-link" href="{{ event.maps_url | e }}" target="_blank" rel="noopener noreferrer">View directions ↗</a>{% endif %}</article>{% endfor %}</div>
+      {% if doc.travel_notes %}<aside class="travel-note"><p class="eyebrow">A little help getting here</p><h3>Travel & accommodation</h3><p class="preserve-lines">{{ doc.travel_notes | e }}</p></aside>{% endif %}
+    </section>
+    {% if doc.gallery %}<section class="section" id="gallery"><div class="section-heading"><p class="eyebrow">Little moments, lasting memories</p><h2>A glimpse of us</h2></div><div class="gallery">{% for photo in doc.gallery %}<button class="gallery-item" data-photo="{{ photo.image | e }}" data-caption="{{ (photo.caption or doc.title) | e }}" aria-label="Open photo: {{ (photo.caption or doc.title) | e }}"><img src="{{ photo.image | e }}" alt="{{ (photo.caption or doc.title) | e }}" loading="lazy">{% if photo.caption %}<span>{{ photo.caption | e }}</span>{% endif %}</button>{% endfor %}</div></section>{% endif %}
+    {% if doc.enable_rsvp %}<section class="section rsvp-section" id="rsvp"><div class="section-heading"><p class="eyebrow">The day is better with you</p><h2>Will you join us?</h2><p>{{ (doc.rsvp_message or '') | e }}</p>{% if doc.rsvp_deadline %}<p class="deadline">Kindly reply by {{ frappe.utils.formatdate(doc.rsvp_deadline, 'MMMM d, yyyy') | e }}</p>{% endif %}</div>
+    {% if rsvp_open %}<form id="rsvp-form" class="rsvp-form">
+      <div class="form-grid"><label>Your name<input name="guest_name" autocomplete="name" maxlength="140" required></label><label>Email address<input type="email" name="email" autocomplete="email" maxlength="140" required></label></div>
+      <div class="form-grid"><label>Phone <span>(optional)</span><input type="tel" name="phone" autocomplete="tel" maxlength="40"></label><label>Will you attend?<select name="attendance" required><option value="">Please select</option><option value="Attending">Joyfully accept</option><option value="Not Attending">Regretfully decline</option></select></label></div>
+      <div class="form-grid" id="attending-fields"><label>Number of guests, including you<input type="number" name="guest_count" min="1" max="{{ doc.max_guests }}" value="1" required></label><label>Dietary requirements <span>(optional)</span><input name="dietary_requirements" maxlength="1000"></label></div>
+      <label>A note for the couple <span>(optional)</span><textarea name="message" rows="3" maxlength="2000" placeholder="Leave a little love…"></textarea></label>
+      <div class="honeypot" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <button class="button submit-rsvp" type="submit">Send my RSVP <span aria-hidden="true">♡</span></button>
+      <p id="rsvp-status" role="status" aria-live="polite"></p>
+      <p class="privacy-note">Your response will be shared with the wedding hosts.</p>
+    </form><noscript><p>Please enable JavaScript to send your RSVP{% if doc.contact_email %}, or contact {{ doc.contact_email | e }}{% endif %}.</p></noscript>{% else %}<p class="rsvp-closed">RSVP has closed. Please contact the hosts for assistance.</p>{% endif %}</section>{% endif %}
+  </main>
+  <footer><p class="eyebrow">With love, always</p><h2>{{ doc.bride_name | e }} <i>&</i> {{ doc.groom_name | e }}</h2><p>{{ frappe.utils.formatdate(doc.wedding_date, 'MMMM d, yyyy') | e }}</p>{% if doc.contact_name or doc.contact_phone or doc.contact_email %}<div class="contact"><p>Questions? {% if doc.contact_name %}Contact {{ doc.contact_name | e }}{% endif %}</p>{% if doc.contact_phone %}<p>{{ doc.contact_phone | e }}</p>{% endif %}{% if doc.contact_email %}<a href="mailto:{{ doc.contact_email | e }}">{{ doc.contact_email | e }}</a>{% endif %}</div>{% endif %}<span class="footer-heart" aria-hidden="true">♡</span></footer>
+  {% if doc.music_file %}<audio id="wedding-music" src="{{ doc.music_file | e }}" loop preload="none"></audio><button class="music-toggle" id="music-toggle" aria-label="Play background music" aria-pressed="false">♫ <span>Play music</span></button>{% endif %}
+  <dialog id="photo-dialog"><button class="close-dialog" aria-label="Close photo">×</button><img alt=""><p></p></dialog>
+  </div>
+</body>
+</html>

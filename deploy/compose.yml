@@ -1,0 +1,114 @@
+x-app: &app
+  image: ${INVITE_IMAGE:-invite:local}
+  restart: unless-stopped
+  volumes:
+    - sites:/home/frappe/frappe-bench/sites
+    - logs:/home/frappe/frappe-bench/logs
+
+x-ready: &ready
+  setup:
+    condition: service_completed_successfully
+
+services:
+  db:
+    image: mariadb:11.8
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  redis-cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  redis-queue:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, 'yes']
+    volumes:
+      - queue:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  setup:
+    <<: *app
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
+    environment:
+      SITE_NAME: ${SITE_NAME:-invite.localhost}
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+    command:
+      - bash
+      - -ec
+      - |
+        ls -1 apps > sites/apps.txt
+        bench set-config -g db_host db
+        bench set-config -gp db_port 3306
+        bench set-config -g redis_cache redis://redis-cache:6379
+        bench set-config -g redis_queue redis://redis-queue:6379
+        bench set-config -g redis_socketio redis://redis-queue:6379
+        bench set-config -gp socketio_port 9000
+        bench set-config -g chromium_path /usr/bin/chromium-headless-shell
+        if [ ! -f "sites/$$SITE_NAME/site_config.json" ]; then
+          bench new-site "$$SITE_NAME" --mariadb-user-host-login-scope='%' \
+            --db-root-password "$$DB_ROOT_PASSWORD" --admin-password "$$ADMIN_PASSWORD" \
+            --install-app invite
+        fi
+        bench --site "$$SITE_NAME" list-apps
+  backend:
+    <<: *app
+    depends_on: *ready
+  frontend:
+    <<: *app
+    depends_on:
+      <<: *ready
+      backend:
+        condition: service_started
+      websocket:
+        condition: service_started
+    command: [nginx-entrypoint.sh]
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: websocket:9000
+      FRAPPE_SITE_NAME_HEADER: ${SITE_NAME:-invite.localhost}
+    ports:
+      - '${HTTP_PORT:-8080}:8080'
+  websocket:
+    <<: *app
+    depends_on: *ready
+    command: [node, /home/frappe/frappe-bench/apps/frappe/socketio.js]
+  worker:
+    <<: *app
+    depends_on: *ready
+    command: [bench, worker, --queue, 'short,default,long']
+  scheduler:
+    <<: *app
+    depends_on: *ready
+    command: [bench, schedule]
+
+volumes:
+  sites:
+  logs:
+  db:
+  queue:

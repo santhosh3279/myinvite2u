@@ -1,0 +1,88 @@
+{
+  "doctype": "DocType",
+  "name": "Wedding RSVP",
+  "module": "Invitation",
+  "engine": "InnoDB",
+  "field_order": [
+    "invitation",
+    "guest_name",
+    "email",
+    "phone",
+    "attendance",
+    "guest_count",
+    "dietary_requirements",
+    "message"
+  ],
+  "fields": [
+    {
+      "fieldname": "invitation",
+      "label": "Wedding Invitation",
+      "fieldtype": "Link",
+      "options": "Wedding Invitation",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "guest_name",
+      "label": "Guest Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "email",
+      "label": "Email",
+      "fieldtype": "Data",
+      "options": "Email",
+      "reqd": 1
+    },
+    {
+      "fieldname": "phone",
+      "label": "Phone",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "attendance",
+      "label": "Attendance",
+      "fieldtype": "Select",
+      "options": "Attending\nNot Attending",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "guest_count",
+      "label": "Number of Guests",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "dietary_requirements",
+      "label": "Dietary Requirements",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "message",
+      "label": "Message to the Couple",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "share": 1
+    }
+  ],
+  "search_fields": "guest_name,email",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "autoname": "hash",
+  "track_changes": 1
+}
