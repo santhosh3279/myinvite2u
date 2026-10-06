@@ -110,7 +110,7 @@ logs, an image update check, and an update button.
 From the repository on your Docker host:
 
 ```bash
-# Create .env.dashboard and set a password of at least 12 characters:
+# Create .env.dashboard and set your dashboard password:
 # DASHBOARD_PASSWORD=your-dashboard-password
 docker compose --env-file .env.dashboard -f deploy/dashboard/compose.yml up -d --build
 ```

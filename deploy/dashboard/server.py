@@ -22,8 +22,8 @@ COMPOSE = Path(__file__).resolve().parents[1] / "compose.yml"
 
 class Manager:
     def __init__(self, data_dir, password, runner=None):
-        if len(password) < 12:
-            raise ValueError("DASHBOARD_PASSWORD must contain at least 12 characters")
+        if not password:
+            raise ValueError("DASHBOARD_PASSWORD must be set")
         self.password = password
         self.secret = secrets.token_bytes(32)
         self.revoked_sessions = set()
@@ -106,9 +106,9 @@ class Manager:
         if not 1024 <= port <= 65535 or port == 8090:
             raise ValueError("Use a port between 1024 and 65535 other than 8090")
         passwords = [str(payload.get(key, "")) for key in ("db_password", "admin_password")]
-        if any(len(value) < 12 or len(value) > 256 or any(ord(c) < 32 for c in value)
+        if any(not value or len(value) > 256 or any(ord(c) < 32 for c in value)
                for value in passwords):
-            raise ValueError("Use passwords of 12–256 characters without control characters")
+            raise ValueError("Enter non-empty passwords of up to 256 characters without control characters")
         self.config = dict(site=site, port=port, image=f"{REPOSITORY}:{tag}",
                            db_password=passwords[0], admin_password=passwords[1], installed=False)
         self.save()

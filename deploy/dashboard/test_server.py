@@ -36,9 +36,9 @@ class ManagerTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.docker = FakeDocker()
-        self.manager = Manager(self.temp.name, "dashboard-password", self.docker)
+        self.manager = Manager(self.temp.name, "short", self.docker)
         self.payload = dict(site="invite.localhost", port=8080, tag="latest",
-                            db_password="database-password", admin_password="admin-password")
+                            db_password="db", admin_password="admin")
         self.manager.configure(self.payload)
 
     def installed(self):
@@ -114,13 +114,13 @@ class ManagerTests(unittest.TestCase):
 
     def test_setup_retry_preserves_database_password(self):
         self.manager.configure({**self.payload, "db_password": "different-password"})
-        self.assertEqual(self.manager.config["db_password"], "database-password")
+        self.assertEqual(self.manager.config["db_password"], "db")
 
     def test_redaction_and_input_validation(self):
-        self.manager.log("database-password admin-password dashboard-password")
+        self.manager.log("db admin short")
         self.assertEqual(self.manager.logs[-1], "[redacted] [redacted] [redacted]")
         for field, value in [("site", "--bad"), ("site", "a..b"), ("tag", "latest;echo bad"),
-                             ("port", 8090), ("admin_password", "short")]:
+                             ("port", 8090), ("admin_password", "")]:
             with self.subTest(field=field, value=value):
                 manager = Manager(Path(self.temp.name) / (field + str(len(value)) if isinstance(value, str) else field),
                                   "dashboard-password", self.docker)

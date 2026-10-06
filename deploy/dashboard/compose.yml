@@ -6,7 +6,7 @@ services:
       dockerfile: deploy/dashboard/Dockerfile
     restart: unless-stopped
     environment:
-      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?Set a dashboard password of at least 12 characters}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?Set a dashboard password}
       DOCKER_CONFIG: /data/docker
     ports:
       - '0.0.0.0:8090:8090'

@@ -30,8 +30,8 @@
           <label>Web port<input name="port" value="8080" type="number" min="1024" max="65535" required></label>
           <label>Image tag<input name="tag" value="latest" required autocomplete="off"></label>
           <div class="muted" style="align-self:center">Use <strong>latest</strong> for the newest default branch image, or enter a release tag.</div>
-          <label>Administrator password<input name="admin_password" type="password" minlength="12" maxlength="256" required autocomplete="new-password"></label>
-          <label>Database password<input name="db_password" type="password" minlength="12" maxlength="256" required autocomplete="new-password"></label>
+          <label>Administrator password<input name="admin_password" type="password" maxlength="256" required autocomplete="new-password"></label>
+          <label>Database password<input name="db_password" type="password" maxlength="256" required autocomplete="new-password"></label>
         </div>
         <div class="actions"><button id="install">Install site</button></div>
       </form>
