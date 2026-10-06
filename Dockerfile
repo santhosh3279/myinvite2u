@@ -26,7 +26,7 @@ FROM frappe/base:${FRAPPE_VERSION} AS runtime
 USER frappe
 WORKDIR /home/frappe/frappe-bench
 COPY --from=builder --chown=frappe:0 /home/frappe/frappe-bench /home/frappe/frappe-bench
-RUN mv sites/assets assets && chmod -R g=u /home/frappe/frappe-bench
+RUN mv sites/assets assets && chmod -R g=u sites logs
 COPY --chown=frappe:0 --chmod=755 deploy/docker-entrypoint.sh /usr/local/bin/invite-entrypoint.sh
 EXPOSE 8000 8080 9000
 VOLUME ["/home/frappe/frappe-bench/sites", "/home/frappe/frappe-bench/logs"]
