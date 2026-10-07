@@ -294,3 +294,36 @@ including the envelope, event cards, story timeline, photo lightbox and RSVP for
 Both templates share the invitation content, animations, public route and domain
 routing. The template is selected per invitation and applies to every guest; it
 is independent of the guest's device appearance setting.
+
+### Hindu wedding Vue template
+
+`frontend/src/pages/hinduweddinginvite.vue` adapts the temple-door wedding design
+from [weddingInvitationWebsite](https://github.com/vigneshwarcj03/weddingInvitationWebsite)
+to Vue. Its copied artwork, gallery photographs and music are in
+`invite/public/hindu-wedding`, alongside the upstream MIT license and source
+commit attribution. No Next.js or React runtime is needed.
+
+Build with `yarn build` (or deploy the next app Docker image), then open
+`/invite#/hinduweddinginvite`. The invitation home page also links to this preview.
+Hash routing works with the existing Frappe `/invite` page and requires no Nginx
+rewrite. To personalize the greeting, use
+`/invite#/hinduweddinginvite?guest=Ananya`.
+
+The page includes the temple entrance, floral hero, story timeline, countdown,
+reception and ceremony illustrations, venue map, categorized gallery with a
+keyboard-accessible lightbox, and optional background music. Music starts when
+the visitor presses its button. Animations respect reduced-motion preferences.
+
+This is a standalone template preview, separate from the Wedding Invitation
+DocType's Light/Dark selection. Sample dates are in May 2027. Customize the
+component props (`groom`, `bride`, `weddingDate`, `receptionDate`, `timeZone`,
+`venue`, `city`) and its story/gallery data for the actual couple. Dates should
+include an explicit UTC offset. Replace sample photographs in the asset folder
+before using the template for another couple.
+
+The preview explicitly does not save or send RSVPs. When embedding the component
+in a published invitation, supply its `invitationRoute` prop to use the existing
+`invite.api.submit_rsvp` endpoint. The route must identify a published invitation
+on the current host with RSVP enabled; its deadline and guest limit apply.
+Authenticated deployments must expose the usual Frappe CSRF token to the frontend.
+Successful responses are shown only after the endpoint confirms receipt.
