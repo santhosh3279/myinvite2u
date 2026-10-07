@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" data-theme="hindu-wedding">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token | e }}">
+  <meta name="description" content="{{ (doc.invitation_message or doc.title) | e }}">
+  <meta property="og:title" content="{{ doc.title | e }} — Wedding Invitation">
+  <meta property="og:description" content="{{ (doc.invitation_message or '') | e }}">
+  {% if doc.hero_image %}<meta property="og:image" content="{{ frappe.utils.get_url(doc.hero_image) | e }}">{% endif %}
+  <meta name="theme-color" content="#faf5e9">
+  <title>{{ doc.title | e }} — Wedding Invitation</title>
+  {% for stylesheet in hindu_styles %}<link rel="stylesheet" href="{{ stylesheet | e }}">{% endfor %}
+  <script type="module" src="{{ hindu_script | e }}"></script>
+</head>
+<body>
+  <div id="hindu-invitation" data-invitation="{{ hindu_data | e }}"></div>
+  <noscript><h1>{{ doc.title | e }}</h1><p>{{ (doc.invitation_message or '') | e }}</p><p>{{ doc.wedding_date | e }}</p><p>Please enable JavaScript to open this invitation.</p></noscript>
+</body>
+</html>

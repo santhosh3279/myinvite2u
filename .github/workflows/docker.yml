@@ -78,6 +78,7 @@ jobs:
             grep -qx invite sites/apps.txt
             test -f apps/invite/invite/www/invite.html
             test -d apps/invite/invite/public/frontend
+            test -f apps/invite/invite/public/frontend/.vite/manifest.json
             test -d assets/frappe
           '
       - name: Publish verified image

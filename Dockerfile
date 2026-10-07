@@ -19,6 +19,7 @@ RUN env/bin/pip install --no-cache-dir -e apps/invite \
 RUN bench build --production
 RUN test -f apps/invite/invite/www/invite.html \
     && test -d apps/invite/invite/public/frontend \
+    && test -f apps/invite/invite/public/frontend/.vite/manifest.json \
     && printf '{}\n' > sites/common_site_config.json \
     && find apps -type d -name .git -prune -exec rm -rf '{}' +
 

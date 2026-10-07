@@ -107,7 +107,7 @@
       "fieldname": "invitation_template",
       "label": "Invitation Template",
       "fieldtype": "Select",
-      "options": "Light\nDark",
+      "options": "Light\nDark\nHindu Wedding",
       "default": "Light",
       "reqd": 1,
       "description": "Choose the design used by this invitation\u2019s public website."

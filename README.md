@@ -287,11 +287,11 @@ Story entries retain their order from the invitation's Our Story table.
 
 ### Invitation templates
 
-Choose **Light** or **Dark** in the Wedding Invitation's **Invitation Template**
+Choose **Light**, **Dark**, or **Hindu Wedding** in the Wedding Invitation's **Invitation Template**
 field, save, and use **Open Invitation** to view the selected design. Light is
 the default. Dark uses deep navy surfaces, champagne accents and light text,
 including the envelope, event cards, story timeline, photo lightbox and RSVP form.
-Both templates share the invitation content, animations, public route and domain
+All three templates share the invitation content, animations, public route and domain
 routing. The template is selected per invitation and applies to every guest; it
 is independent of the guest's device appearance setting.
 
@@ -314,8 +314,14 @@ reception and ceremony illustrations, venue map, categorized gallery with a
 keyboard-accessible lightbox, and optional background music. Music starts when
 the visitor presses its button. Animations respect reduced-motion preferences.
 
-This is a standalone template preview, separate from the Wedding Invitation
-DocType's Light/Dark selection. Sample dates are in May 2027. Customize the
+Select **Hindu Wedding** in the Wedding Invitation DocType, save, and use
+**Open Invitation** to publish this design with the saved names, date/timezone,
+parents, message, photos, story, events, directions, travel notes, contact details
+and music. Empty story/gallery sections are omitted. RSVP respects the saved
+enabled flag, deadline and guest limit and saves to Wedding RSVP. This works
+on the normal invitation URL and its assigned subdomain.
+
+The standalone preview has sample dates in May 2027. Customize the
 component props (`groom`, `bride`, `weddingDate`, `receptionDate`, `timeZone`,
 `venue`, `city`) and its story/gallery data for the actual couple. Dates should
 include an explicit UTC offset. Replace sample photographs in the asset folder
@@ -325,5 +331,12 @@ The preview explicitly does not save or send RSVPs. When embedding the component
 in a published invitation, supply its `invitationRoute` prop to use the existing
 `invite.api.submit_rsvp` endpoint. The route must identify a published invitation
 on the current host with RSVP enabled; its deadline and guest limit apply.
-Authenticated deployments must expose the usual Frappe CSRF token to the frontend.
+The public renderer supplies the Frappe CSRF token automatically.
 Successful responses are shown only after the endpoint confirms receipt.
+
+After updating an existing installation, run `bench --site <site> migrate` and
+`bench build --app invite`, then restart the application workers. The Docker
+dashboard's update action builds on the image's compiled assets and runs the
+migration. Refresh Desk after updating to see the new selector option. The
+frontend build manifest must be deployed with its assets; the public Hindu
+renderer uses it to load the current Vue entry point.

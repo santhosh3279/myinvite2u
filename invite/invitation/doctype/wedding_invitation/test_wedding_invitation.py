@@ -1,7 +1,11 @@
+import json
+from html.parser import HTMLParser
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
+from werkzeug.test import EnvironBuilder
+from werkzeug.wrappers import Request
 
 import frappe
 from frappe.utils import add_days, today
@@ -241,3 +245,53 @@ class TestWeddingInvitation(unittest.TestCase):
 		self.invitation.invitation_template = "../some-template"
 		with self.assertRaises(frappe.ValidationError):
 			self.invitation.save()
+
+	def test_hindu_template_saved_data_and_public_render(self):
+		self.invitation.invitation_template = "Hindu Wedding"
+		self.invitation.invitation_message = '</script><img src=x onerror=alert(1)> & "welcome"'
+		self.invitation.append("story", {"title": "Our meeting", "description": "At university"})
+		self.invitation.append("gallery", {"image": "/files/our-photo.jpg", "caption": "Together"})
+		self.invitation.save()
+		frappe.set_user("Guest")
+		page = DocumentPage(self.invitation.route)
+		self.assertTrue(page.can_render())
+		html = page.get_html()
+		self.assertIn('data-theme="hindu-wedding"', html)
+		self.assertNotIn('<img src=x', html)
+		class PayloadParser(HTMLParser):
+			def handle_starttag(parser, tag, attrs):
+				attrs = dict(attrs)
+				if attrs.get("id") == "hindu-invitation":
+					parser.payload = json.loads(attrs["data-invitation"])
+		parser = PayloadParser()
+		parser.feed(html)
+		data = parser.payload
+		self.assertEqual(data["bride"], self.invitation.bride_name)
+		self.assertEqual(data["invitationRoute"], self.invitation.route)
+		self.assertEqual(data["saved"]["invitation_message"], self.invitation.invitation_message)
+		self.assertEqual(data["saved"]["events"][0]["venue_name"], "Garden Hall")
+		self.assertTrue(data["saved"]["events"][0]["date"].endswith("+05:30"))
+		self.assertEqual(data["saved"]["gallery"][0]["image"], "/files/our-photo.jpg")
+		self.assertEqual(data["saved"]["story"][0]["title"], "Our meeting")
+		self.assertNotIn("owner", data["saved"])
+		self.assertTrue(data["saved"]["rsvp_open"])
+		self.assertTrue(self.rsvp()["success"])
+
+	def test_hindu_domain_and_closed_rsvp(self):
+		self.invitation.invitation_template = "Hindu Wedding"
+		self.invitation.rsvp_deadline = add_days(today(), -1)
+		domain = self.activate_domain()
+		with patch.object(frappe.local, "request", Request(EnvironBuilder(base_url=f"https://{domain}/").get_environ()), create=True):
+			page = InvitationDomainPage("index")
+			self.assertTrue(page.can_render())
+			self.assertIn('data-theme="hindu-wedding"', page.get_html())
+		context = frappe._dict()
+		self.invitation.get_context(context)
+		self.assertFalse(json.loads(context.hindu_data)["saved"]["rsvp_open"])
+		self.invitation.enable_rsvp = 0
+		self.invitation.save()
+		self.invitation.get_context(context)
+		self.assertFalse(json.loads(context.hindu_data)["saved"]["enable_rsvp"])
+		self.invitation.is_published = 0
+		self.invitation.save()
+		self.assertFalse(DocumentPage(self.invitation.route).can_render())

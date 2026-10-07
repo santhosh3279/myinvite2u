@@ -15,6 +15,10 @@ export default defineConfig({
       interval: 300,
     },
   },
+  build: {
+    manifest: true,
+    rollupOptions: { input: { main: resolve('./frontend/index.html'), hindu: resolve('./frontend/src/hindu.js') } },
+  },
   plugins: [
     frappeui({
       jinjaBootData: false,

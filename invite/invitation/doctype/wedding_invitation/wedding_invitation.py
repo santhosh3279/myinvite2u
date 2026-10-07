@@ -1,10 +1,11 @@
+import json
 from datetime import datetime
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import frappe
 from frappe import _
-from frappe.utils import cint, get_time, getdate, validate_email_address
+from frappe.utils import cint, get_time, getdate, get_datetime, validate_email_address
 from frappe.website.website_generator import WebsiteGenerator
 from frappe.website.utils import cleanup_page_name
 
@@ -14,6 +15,7 @@ from invite.domains import domain_from_names, validate_invitation_domain
 INVITATION_TEMPLATES = {
 	"Light": "templates/wedding_invitation.html",
 	"Dark": "templates/wedding_invitation_dark.html",
+	"Hindu Wedding": "templates/wedding_invitation_hindu.html",
 }
 
 
@@ -37,7 +39,7 @@ class WeddingInvitation(WebsiteGenerator):
 	def validate(self):
 		self.invitation_template = self.invitation_template or "Light"
 		if self.invitation_template not in INVITATION_TEMPLATES:
-			frappe.throw(_("Please select a Light or Dark invitation template."))
+			frappe.throw(_("Please select a Light, Dark or Hindu Wedding invitation template."))
 		self.bride_name = (self.bride_name or "").strip()
 		self.groom_name = (self.groom_name or "").strip()
 		bride = cleanup_page_name(self.bride_name).strip("-.")
@@ -87,3 +89,44 @@ class WeddingInvitation(WebsiteGenerator):
 		context.wedding_iso = datetime.combine(getdate(self.wedding_date), get_time(wedding_time), tzinfo=ZoneInfo(self.timezone)).isoformat()
 		context.rsvp_open = bool(self.enable_rsvp and (not self.rsvp_deadline or datetime.now(ZoneInfo(self.timezone)).date() <= getdate(self.rsvp_deadline)))
 		context.csrf_token = frappe.sessions.get_csrf_token()
+
+		if self.invitation_template == "Hindu Wedding":
+			self.set_hindu_context(context)
+
+	def set_hindu_context(self, context):
+		# Only public presentation fields are serialized, never the whole document.
+		fields = ("invitation_message", "bride_parents", "groom_parents", "hero_image",
+			"couple_image", "quote", "travel_notes", "contact_name", "contact_phone",
+			"contact_email", "music_file", "enable_rsvp", "rsvp_deadline", "max_guests", "rsvp_message")
+		saved = {field: self.get(field) for field in fields}
+		saved["rsvp_open"] = context.rsvp_open
+		saved["story"] = [{key: row.get(key) for key in ("title", "milestone_date", "description", "image")} for row in self.story]
+		saved["gallery"] = [{key: row.get(key) for key in ("image", "caption")} for row in self.gallery]
+		saved["events"] = []
+		for row in self.events:
+			event = {key: row.get(key) for key in ("event_name", "venue_name", "address", "description", "dress_code", "maps_url")}
+			event["date"] = get_datetime(row.event_datetime).replace(tzinfo=ZoneInfo(self.timezone)).isoformat()
+			saved["events"].append(event)
+		context.hindu_data = frappe.as_json({
+			"groom": self.groom_name, "bride": self.bride_name, "weddingDate": context.wedding_iso,
+			"timeZone": self.timezone, "invitationRoute": self.route, "saved": saved,
+			"venue": self.events[0].venue_name if self.events else "",
+			"city": self.events[0].address if self.events else "",
+		})
+		manifest_path = frappe.get_app_path("invite", "public", "frontend", ".vite", "manifest.json")
+		with open(manifest_path) as manifest_file:
+			manifest = json.load(manifest_file)
+		entry = manifest["src/hindu.js"]
+		context.hindu_script = "/assets/invite/frontend/" + entry["file"]
+		styles = set()
+		visited = set()
+		def collect_styles(key):
+			if key in visited:
+				return
+			visited.add(key)
+			chunk = manifest[key]
+			styles.update(chunk.get("css", []))
+			for dependency in chunk.get("imports", []):
+				collect_styles(dependency)
+		collect_styles("src/hindu.js")
+		context.hindu_styles = ["/assets/invite/frontend/" + path for path in sorted(styles)]

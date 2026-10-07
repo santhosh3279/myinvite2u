@@ -1,10 +1,11 @@
 <script setup>
 // Adapted from vigneshwarcj03/weddingInvitationWebsite (MIT).
 // See invite/public/hindu-wedding/LICENSE and SOURCE.md.
+import { RouterLink } from 'vue-router'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
 
 const props = defineProps({
+  saved: { type: Object, default: null },
   groom: { type: String, default: 'Karthik' },
   bride: { type: String, default: 'Shakti' },
   weddingDate: { type: String, default: '2027-05-16T10:00:00+05:30' },
@@ -15,8 +16,7 @@ const props = defineProps({
   // Set to a published Wedding Invitation route when reusing this page.
   invitationRoute: { type: String, default: '' },
 })
-const route = useRoute()
-const guest = computed(() => String(route.query.guest || new URLSearchParams(window.location.search).get('guest') || 'Family & Friends').slice(0, 140))
+const guest = computed(() => String(new URLSearchParams(window.location.hash.split('?')[1] || '').get('guest') || new URLSearchParams(window.location.search).get('guest') || 'Family & Friends').slice(0, 140))
 const asset = (file) => `/assets/invite/hindu-wedding/${encodeURIComponent(file).replaceAll('%2F', '/')}`
 const entered = ref(false)
 const opening = ref(false)
@@ -39,13 +39,16 @@ const countdown = computed(() => [
   ['Days', Math.floor(remaining.value / 86400)], ['Hours', Math.floor(remaining.value / 3600) % 24],
   ['Minutes', Math.floor(remaining.value / 60) % 60], ['Seconds', remaining.value % 60],
 ])
-const stories = computed(() => [
+const stories = computed(() => props.saved ? props.saved.story.map(row => [row.milestone_date || '', row.title, row.description, row.image]) : [
   ['2020', 'Our First Meeting', 'A smile at a family function, the start of a beautiful journey together.'],
   ['2021', 'Growing Closer', 'Shared dreams and laughter made our bond stronger every day.'],
   [String(new Date(props.weddingDate).getFullYear()), 'The Proposal', 'With blessings from our families, we decided on forever.'],
   ['Today', 'Joining Hands', 'With joyful hearts, we celebrate our wedding and new beginnings.'],
 ])
-const celebrations = computed(() => [
+const celebrations = computed(() => props.saved ? [{ title: 'Wedding Celebrations', events: props.saved.events.map(event => ({
+  ...event, title: event.event_name, text: event.description,
+  image: /reception/i.test(event.event_name) ? 'Reception.png' : 'Wedding Ceremony.png',
+})) }] : [
   { title: 'Reception Celebrations', events: [
     { image: 'Reception.png', title: 'Reception', text: 'An evening of love, laughter and togetherness.', date: props.receptionDate },
     { image: 'DJ.png', title: 'Live DJ & Dance Floor', text: 'Bring your dancing shoes. Let’s fill the evening with music and memories.' },
@@ -63,11 +66,12 @@ const tabs = [ ['engagement', 'Engagement'], ['pre', 'Pre-wedding'], ['fam', 'Fa
 const activeTab = ref('engagement')
 const selected = ref(0)
 const lightbox = ref(null)
-const photo = (index) => asset(`${activeTab.value}${index}.jfif`)
-const photoLabel = (index) => `${tabs.find(([key]) => key === activeTab.value)[1]} photograph ${index}`
+const photoCount = computed(() => props.saved ? props.saved.gallery.length : 3)
+const photo = (index) => props.saved ? props.saved.gallery[index - 1]?.image : asset(`${activeTab.value}${index}.jfif`)
+const photoLabel = (index) => props.saved ? (props.saved.gallery[index - 1]?.caption || `${props.bride} & ${props.groom}`) : `${tabs.find(([key]) => key === activeTab.value)[1]} photograph ${index}`
 const mapsQuery = computed(() => encodeURIComponent(`${props.venue}, ${props.city}`))
 function openPhoto(index) { selected.value = index; lightbox.value.showModal() }
-function movePhoto(step) { selected.value = (selected.value - 1 + step + 3) % 3 + 1 }
+function movePhoto(step) { selected.value = (selected.value - 1 + step + photoCount.value) % photoCount.value + 1 }
 async function toggleMusic() {
   musicError.value = ''
   if (playing.value) { audio.value.pause(); return }
@@ -96,7 +100,7 @@ async function submit() {
   submitting.value = true
   try {
     const headers = { 'Content-Type': 'application/json' }
-    const csrf = window.frappe?.csrf_token || window.csrf_token
+    const csrf = document.querySelector('meta[name=csrf-token]')?.content || window.frappe?.csrf_token || window.csrf_token
     if (csrf) headers['X-Frappe-CSRF-Token'] = csrf
     const result = await fetch('/api/method/invite.api.submit_rsvp', {
       method: 'POST', credentials: 'same-origin', headers,
@@ -119,7 +123,7 @@ onUnmounted(() => { clearInterval(timer); clearTimeout(entranceTimer); audio.val
 
 <template>
   <div class="hindu-invite">
-    <audio ref="audio" :src="asset('music/wedding-theme.mp3')" loop preload="none" @play="playing = true" @pause="playing = false" />
+    <audio ref="audio" :src="saved ? (saved.music_file || undefined) : asset('music/wedding-theme.mp3')" loop preload="none" @play="playing = true" @pause="playing = false" />
     <div v-if="!entered" class="entrance" :class="{ opening }" :style="{ backgroundImage: `url(${asset('Background_Temple_image.png')})` }">
       <img class="door left" :src="asset('temple_door_left.png')" alt="" />
       <img class="door right" :src="asset('temple_door_right.png')" alt="" />
@@ -128,7 +132,7 @@ onUnmounted(() => { clearInterval(timer); clearTimeout(entranceTimer); audio.val
         <h1>You Are Invited</h1>
         <span class="ornament" aria-hidden="true">✦</span>
         <p>Dear {{ guest }},</p>
-        <img class="welcome-couple" :src="asset('Couples_1.jpg')" alt="The happy couple" />
+        <img class="welcome-couple" :src="saved ? (saved.couple_image || saved.hero_image || asset('HeroSection_Image.png')) : asset('Couples_1.jpg')" alt="The happy couple" />
         <h2>{{ groom }} <i>&</i> {{ bride }}</h2>
         <p>Two hearts. Two families. One beautiful beginning.</p>
         <button class="gold-button" :disabled="opening" @click="enter">{{ opening ? 'Opening…' : 'Enter Invitation' }} <span aria-hidden="true">→</span></button>
@@ -138,30 +142,31 @@ onUnmounted(() => { clearInterval(timer); clearTimeout(entranceTimer); audio.val
 
     <main v-if="entered">
       <nav class="invitation-nav" aria-label="Invitation sections">
-        <RouterLink to="/" aria-label="Back to invitation home">♡</RouterLink>
+        <RouterLink v-if="!saved" to="/" aria-label="Back to invitation home">♡</RouterLink><span v-else aria-hidden="true">♡</span>
         <button @click="goTo('celebrations')">Celebrations</button>
-        <button @click="goTo('gallery')">Gallery</button>
-        <button @click="goTo('rsvp')">RSVP</button>
+        <button v-if="photoCount" @click="goTo('gallery')">Gallery</button>
+        <button v-if="!saved || saved.enable_rsvp" @click="goTo('rsvp')">RSVP</button>
       </nav>
       <header class="hero">
         <img class="hero-flowers" :src="asset('TopHero.png')" alt="" />
         <div class="petals" aria-hidden="true"><img v-for="i in 10" :key="i" :src="asset('rose-petal.png')" alt="" :style="{ left: `${i * 9}%`, animationDelay: `${i * -1.7}s`, animationDuration: `${10 + i}s` }" /></div>
-        <img class="hero-couple" :src="asset('HeroSection_Image.png')" alt="Illustration of a couple on a flower-adorned swing" />
+        <img class="hero-couple" :src="saved?.hero_image || asset('HeroSection_Image.png')" alt="Illustration of a couple on a flower-adorned swing" />
         <p class="eyebrow">Together with their families</p>
         <h1 ref="hero" tabindex="-1">{{ groom }} <span>&</span> {{ bride }}</h1>
         <img class="name-ornament" :src="asset('heroCenter.png')" alt="" />
-        <p class="hero-text">Invite you to celebrate their wedding<br>and the beginning of their forever.</p>
+        <p class="hero-text preserve-lines">{{ saved ? saved.invitation_message : 'Invite you to celebrate their wedding and the beginning of their forever.' }}</p>
+        <p v-if="saved?.bride_parents || saved?.groom_parents">{{ saved.bride_parents }}<br v-if="saved.bride_parents && saved.groom_parents" />{{ saved.groom_parents }}</p>
         <p class="wedding-date">{{ dateLabel(weddingDate) }}</p>
         <p>{{ city }}</p>
-        <button class="text-button" @click="goTo('story')">Our story <span aria-hidden="true">↓</span></button>
+        <button v-if="stories.length" class="text-button" @click="goTo('story')">Our story <span aria-hidden="true">↓</span></button>
         <img class="hero-bottom" :src="asset('bottom.png')" alt="" />
       </header>
 
-      <section id="story" class="section story">
+      <section v-if="stories.length || saved?.quote || saved?.couple_image" id="story" class="section story">
         <p class="eyebrow">Every love has a story</p><h2>Ours is our favourite</h2><div class="ornament" aria-hidden="true">✦</div>
-        <div class="timeline">
-          <article v-for="([year, title, text], index) in stories" :key="title" class="story-row">
-            <img :src="asset(`Story${index + 1}.png`)" :alt="title" loading="lazy" />
+        <blockquote v-if="saved?.quote">{{ saved.quote }}</blockquote><img v-if="saved?.couple_image" class="couple-photo" :src="saved.couple_image" :alt="`${bride} & ${groom}`" loading="lazy" /><div class="timeline">
+          <article v-for="([year, title, text, image], index) in stories" :key="title" class="story-row">
+            <img :src="image || asset(`Story${index % 4 + 1}.png`)" :alt="title" loading="lazy" />
             <div class="story-card"><p class="eyebrow">{{ year }}</p><h3>{{ title }}</h3><p>{{ text }}</p></div>
           </article>
         </div>
@@ -180,51 +185,53 @@ onUnmounted(() => { clearInterval(timer); clearTimeout(entranceTimer); audio.val
           <div class="event-grid">
             <article v-for="event in group.events" :key="event.title" class="event">
               <img :src="asset(event.image)" :alt="event.title" loading="lazy" />
-              <div class="event-card"><h3>{{ event.title }}</h3><p>{{ event.text }}</p><template v-if="event.date"><p class="event-detail">{{ dateLabel(event.date, true) }}</p><p class="event-detail">{{ venue }}<br>{{ city }}</p></template></div>
+              <div class="event-card"><h3>{{ event.title }}</h3><p>{{ event.text }}</p><template v-if="event.date"><p class="event-detail">{{ dateLabel(event.date, true) }}</p><p class="event-detail">{{ saved ? event.venue_name : venue }}<br>{{ saved ? event.address : city }}</p></template><p v-if="event.dress_code">Dress code: {{ event.dress_code }}</p><a v-if="event.maps_url" :href="event.maps_url" target="_blank" rel="noopener noreferrer">View directions ↗</a></div>
             </article>
           </div>
         </section>
       </div>
 
-      <section class="section location">
+      <section v-if="!saved" class="section location">
         <p class="eyebrow">Meet us here</p><h2>A place for beautiful memories</h2><div class="ornament" aria-hidden="true">✦</div>
         <h3>{{ venue }}</h3><p>{{ city }}</p>
         <iframe :src="`https://maps.google.com/maps?q=${mapsQuery}&output=embed`" title="Wedding venue map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen />
         <a class="gold-button" :href="`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`" target="_blank" rel="noopener noreferrer">Get directions ↗</a>
       </section>
 
-      <section id="gallery" class="section gallery">
+      <section v-if="saved?.travel_notes" class="section"><h2>Travel & accommodation</h2><p class="preserve-lines">{{ saved.travel_notes }}</p></section>
+      <section v-if="photoCount" id="gallery" class="section gallery">
         <p class="eyebrow">Little moments, lasting memories</p><h2>Our Wedding Gallery</h2><div class="ornament" aria-hidden="true">✦</div>
-        <div class="gallery-tabs" aria-label="Photo categories"><button v-for="[key, label] in tabs" :key="key" :aria-pressed="activeTab === key" @click="activeTab = key">{{ label }}</button></div>
-        <div class="gallery-grid"><button v-for="index in 3" :key="`${activeTab}${index}`" :aria-label="`Enlarge ${photoLabel(index)}`" @click="openPhoto(index)"><img :src="photo(index)" :alt="photoLabel(index)" loading="lazy" /><span>View photograph ↗</span></button></div>
+        <div v-if="!saved" class="gallery-tabs" aria-label="Photo categories"><button v-for="[key, label] in tabs" :key="key" :aria-pressed="activeTab === key" @click="activeTab = key">{{ label }}</button></div>
+        <div class="gallery-grid"><button v-for="index in photoCount" :key="`${activeTab}${index}`" :aria-label="`Enlarge ${photoLabel(index)}`" @click="openPhoto(index)"><img :src="photo(index)" :alt="photoLabel(index)" loading="lazy" /><span>View photograph ↗</span></button></div>
         <dialog ref="lightbox" class="lightbox" aria-label="Wedding photographs" @click="($event.target === lightbox) && lightbox.close()" @keydown.left.prevent="movePhoto(-1)" @keydown.right.prevent="movePhoto(1)">
-          <div class="lightbox-content"><button class="close-photo" autofocus aria-label="Close photograph" @click="lightbox.close()">×</button><img v-if="selected" :src="photo(selected)" :alt="photoLabel(selected)" /><div class="photo-controls"><button aria-label="Previous photograph" @click="movePhoto(-1)">←</button><span>{{ selected }} / 3</span><button aria-label="Next photograph" @click="movePhoto(1)">→</button></div></div>
+          <div class="lightbox-content"><button class="close-photo" autofocus aria-label="Close photograph" @click="lightbox.close()">×</button><img v-if="selected" :src="photo(selected)" :alt="photoLabel(selected)" /><div class="photo-controls"><button aria-label="Previous photograph" @click="movePhoto(-1)">←</button><span>{{ selected }} / {{ photoCount }}</span><button aria-label="Next photograph" @click="movePhoto(1)">→</button></div></div>
         </dialog>
       </section>
 
-      <section id="rsvp" class="section rsvp">
+      <section v-if="!saved || saved.enable_rsvp" id="rsvp" class="section rsvp">
         <p class="eyebrow">Your presence is our greatest gift</p><h2>Join our celebration</h2><div class="ornament" aria-hidden="true">✦</div>
-        <p>Share your wishes and blessings.</p>
+        <p>{{ saved ? saved.rsvp_message : 'Share your wishes and blessings.' }}</p><p v-if="saved?.rsvp_deadline">Kindly reply by {{ saved.rsvp_deadline }}</p><p v-if="saved && !saved.rsvp_open">RSVP has closed. Please contact the hosts for assistance.</p>
         <p v-if="!invitationRoute" class="preview-note">Template preview · Responses are not sent or saved.</p>
-        <form v-if="!submitted" @submit.prevent="submit">
+        <form v-if="!submitted && (!saved || saved.rsvp_open)" @submit.prevent="submit">
           <label>Your name<input v-model="form.guest_name" autocomplete="name" required maxlength="140" placeholder="Your full name" /></label>
           <label>Email<input v-model="form.email" type="email" autocomplete="email" required maxlength="140" placeholder="you@example.com" /></label>
           <label>Will you join us?<select v-model="form.attendance"><option>Attending</option><option>Not Attending</option></select></label>
-          <label v-if="form.attendance === 'Attending'">Number of guests<input v-model.number="form.guest_count" type="number" min="1" required /></label>
+          <label v-if="form.attendance === 'Attending'">Number of guests<input v-model.number="form.guest_count" type="number" min="1" :max="saved?.max_guests || 50" required /></label>
           <label>Your wishes<textarea v-model="form.message" rows="4" maxlength="2000" placeholder="A little love for the happy couple…" /></label>
           <div class="honeypot" aria-hidden="true"><label>Leave empty<input v-model="form.website" tabindex="-1" autocomplete="off" /></label></div>
           <button class="gold-button" :disabled="submitting">{{ submitting ? 'Sending…' : invitationRoute ? 'Send RSVP' : 'Preview RSVP' }}</button>
         </form>
         <p v-if="response" class="response" role="status">{{ response }}</p>
       </section>
-      <footer><span aria-hidden="true">♡</span><h2>{{ groom }} & {{ bride }}</h2><p>Thank you for being part of our forever.</p><p class="small">With love, our families</p><RouterLink to="/">Explore invitations ↗</RouterLink></footer>
-      <div class="music-control"><span v-if="musicError" role="status">{{ musicError }}</span><button :aria-pressed="playing" :aria-label="playing ? 'Pause music' : 'Play music'" @click="toggleMusic">{{ playing ? '♫ Pause' : '♫ Music' }}</button></div>
+      <footer><span aria-hidden="true">♡</span><h2>{{ groom }} & {{ bride }}</h2><p>Thank you for being part of our forever.</p><p class="small">With love, our families</p><div v-if="saved" class="contact"><p>{{ saved.contact_name }}</p><p>{{ saved.contact_phone }}</p><a v-if="saved.contact_email" :href="`mailto:${saved.contact_email}`">{{ saved.contact_email }}</a></div><RouterLink v-else to="/">Explore invitations ↗</RouterLink></footer>
+      <div v-if="!saved || saved.music_file" class="music-control"><span v-if="musicError" role="status">{{ musicError }}</span><button :aria-pressed="playing" :aria-label="playing ? 'Pause music' : 'Play music'" @click="toggleMusic">{{ playing ? '♫ Pause' : '♫ Music' }}</button></div>
     </main>
   </div>
 </template>
 
 <style scoped>
 .hindu-invite{--gold:#b38a2e;--wine:#660033;--cream:#faf5e9;min-height:100vh;background:var(--cream);background-image:radial-gradient(#b38a2e18 .8px,transparent .8px);background-size:25px 25px;color:#56432f;font:16px/1.7 Georgia,'Times New Roman',serif;overflow-x:clip}
+.preserve-lines{white-space:pre-line}.couple-photo{max-width:100%;max-height:400px;margin:25px auto;border-radius:12px}.event-card a{color:#fff5dd;text-decoration:underline}
 .hindu-invite *{box-sizing:border-box}.hindu-invite button,.hindu-invite a,.hindu-invite input,.hindu-invite select,.hindu-invite textarea{-webkit-tap-highlight-color:transparent}.hindu-invite button{cursor:pointer;font:inherit}.hindu-invite button:disabled{cursor:wait;opacity:.7}.hindu-invite :focus-visible{outline:3px solid #c28632;outline-offset:5px}.hindu-invite h1,.hindu-invite h2,.hindu-invite h3{font-family:Georgia,'Times New Roman',serif;font-weight:400;line-height:1.2}.hindu-invite h2{font-size:clamp(30px,4vw,46px);color:var(--wine);margin:10px 0 20px}.hindu-invite h3{font-size:26px;margin:0 0 14px}.hindu-invite p{margin:12px 0}.eyebrow{font:11px/1.7 Arial,sans-serif!important;letter-spacing:3px;text-transform:uppercase;color:#8a671e}.small{font-size:12px!important}.ornament{display:flex;align-items:center;justify-content:center;gap:18px;color:var(--gold);margin:20px auto 35px}.ornament:before,.ornament:after{content:'';width:65px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}.ornament:after{transform:rotate(180deg)}.gold-button{display:inline-flex;justify-content:center;align-items:center;gap:24px;padding:13px 25px;background:linear-gradient(120deg,#e6c673,#d4af37);color:#422811;border:1px solid #a78025;border-radius:6px;text-decoration:none;font:14px/1.6 Arial,sans-serif!important;box-shadow:0 6px 20px #8a671e20}.gold-button:hover{filter:brightness(1.06)}
 .entrance{min-height:100svh;display:grid;place-items:center;padding:28px 20px;background-position:center;background-size:cover;position:relative;isolation:isolate;overflow:hidden}.entrance:before{content:'';position:absolute;inset:0;background:#22120944;z-index:-1}.door{position:absolute;top:0;height:100%;width:50%;object-fit:fill;z-index:-1;transition:transform .9s ease-in-out}.left{left:0}.right{right:0}.opening .left{transform:translateX(-100%)}.opening .right{transform:translateX(100%)}.welcome-card{width:min(100%,460px);padding:32px 25px;background:#fff8e7f5;border:1px solid #d4af37;outline:1px solid #d4af3780;outline-offset:8px;border-radius:120px 120px 12px 12px;text-align:center;box-shadow:0 20px 80px #190a0860;transition:opacity .7s,transform .9s}.opening .welcome-card{opacity:0;transform:scale(.94)}.welcome-card h1{font-size:clamp(30px,5vw,40px);color:var(--wine);margin:12px 0}.welcome-card h2{font-size:29px}.welcome-card i{color:var(--gold)}.welcome-card .ornament{margin:12px auto}.welcome-card p{font-size:14px}.welcome-couple{width:130px;height:145px;object-fit:cover;border-radius:70px 70px 10px 10px;border:2px solid #d4af37;margin:12px auto;display:block}.welcome-card .gold-button{margin-top:14px}
 .invitation-nav{display:flex;justify-content:center;align-items:center;gap:28px;padding:13px 20px;border-bottom:1px solid #b38a2e30;background:#fff9ed;position:relative;z-index:2}.invitation-nav a,.invitation-nav button{color:var(--wine);text-decoration:none;background:none;border:0;font-size:13px}.invitation-nav a{font-size:26px}.hero{position:relative;text-align:center;padding:0 24px 100px;isolation:isolate;overflow:hidden}.hero-flowers{position:absolute;top:0;left:0;width:100%;height:190px;object-fit:cover;object-position:top;z-index:-1;pointer-events:none}.hero-couple{display:block;height:380px;max-width:90%;object-fit:contain;margin:0 auto 22px;transform-origin:top center;animation:sway 7s ease-in-out infinite}.hero h1{font-size:clamp(48px,8vw,88px);color:#963d53;margin:17px auto;letter-spacing:-2px}.hero h1 span{font-style:italic;color:var(--gold);font-size:.7em}.name-ornament{width:180px;height:45px;object-fit:contain;margin:0 auto}.hero-text{font-size:19px;line-height:1.8}.wedding-date{font-size:16px;letter-spacing:1px;color:var(--wine);padding-top:12px}.text-button{border:0;background:transparent;color:#896b2d;margin-top:20px;font-size:13px!important}.text-button span{display:block;font-size:24px}.hero-bottom{position:absolute;bottom:0;left:0;width:100%;height:75px;object-fit:cover;object-position:top;z-index:-1}.petals{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:-1}.petals img{position:absolute;top:-35px;width:18px;animation:fall linear infinite;opacity:.7}
